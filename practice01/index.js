@@ -8,6 +8,10 @@ app.get("/",(req,res)=>{
     res.send("Home page is availabe")
 })
 
+app.get("/about",(req,res)=>{
+    res.send("about us !!!")
+})
+
 app.get('/profile',(req,res)=>{
     res.send("welcome to my profile")
 })
