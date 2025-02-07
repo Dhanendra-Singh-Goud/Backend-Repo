@@ -4,6 +4,7 @@ import {user} from "../models/user.models.js"
 import uploadOnCloudinary from "../utils/cloudinary.js"
 import ApiResponse from "../utils/ApiResponse.js";
 import jwt from  "jsonwebtoken"
+import { Aggregate } from "mongoose";
 
 
 const generateAccessTokenAndRefreshToken = async(userId)=>{
@@ -285,7 +286,71 @@ const coverImageUpdate = asyncHandler(async(req,res)=>{
     ApiResponse(2000,user,"CoverImage updated successfully")
    )
 })
-
+const getUserChannelProfile = asyncHandler(async(req,res)=>{
+    const{username}=req.params
+    if(!username?.trim()){
+      throw new ApiError(404,"Username missing")
+    }
+    const channel = await Aggregate([
+      {
+        $match:{
+          username:username
+        }
+      },
+      {
+        $lookup:{
+          from:"subscriptions",
+          localfield:"_id",
+          foreignfield:"channel",
+          as:"subscribers"
+        }
+       },
+       {
+        $lookup:{
+          from:"subscriptions",
+          localfield:"_id",
+          foreignfield:"subscriber",
+          as:"subscribedto"
+        }
+       },
+      {
+        $addfields:{
+          subscriberCount:{
+            $size : $subscribers
+          },
+          channelssubscribedbyto:{
+            $size : $subscribed
+          },
+          isSubscribed : 
+             {
+              $cond:{
+                if:{
+                  $in:[req.user?._id, $subscribers.subscriber]
+                },
+                then:true,
+                else:false
+              }
+             }
+        }
+      },
+      {
+        $project:{
+          fullName:1,
+          username:1,
+          subscriberCount:1,
+          channelssubscribedbyto:1,
+          email:1,
+          avatar:1,
+          coverImage:1
+        }
+      }
+    ])
+    if(!channel?.length){
+      throw new ApiError(404,"channel doesn't exist")
+    }
+    return res.status(200)
+    .json(ApiError(200,channel[0],"username fetched successfully"))
+})
 
 export  {
   registerUser,
@@ -297,5 +362,5 @@ export  {
   updateAccountDetails,
   updateUserAvatar,
   coverImageUpdate,
-
+  getUserChannelProfile,
 } ;
